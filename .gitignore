@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Claude Code memory (local tooling only, not part of submission)
+.claude/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db

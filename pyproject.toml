@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "dataselectenv"
+version = "0.1.0"
+description = "RL environment for optimal data selection under cost, noise, and diversity constraints"
+requires-python = ">=3.10"
+dependencies = [
+    "scikit-learn",
+    "numpy",
+    "pydantic",
+    "fastapi",
+    "uvicorn[standard]",
+    "openai",
+    "websockets",
+    "python-dotenv",
+    "openenv-core>=0.2.0",
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+
+[tool.openenv]
+env_id = "DataSelectEnv-v0"
+entry_point = "server:app"

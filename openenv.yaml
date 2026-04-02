@@ -1,0 +1,108 @@
+name: DataSelectEnv
+version: "1.0.0"
+description: >
+  OpenEnv RL environment for data curation in ML training.
+  Agents learn to select high-quality training data from a noisy pool
+  under budget constraints, balancing uncertainty, diversity, and noise
+  avoidance to incrementally improve a classifier's validation performance.
+
+tags:
+  - openenv
+  - active-learning
+  - data-curation
+  - noisy-labels
+  - machine-learning
+  - reinforcement-learning
+
+authors:
+  - InfraNova
+
+observation_space:
+  type: object
+  properties:
+    remaining_budget:
+      type: integer
+      description: Samples remaining in the selection budget
+    diversity_score:
+      type: number
+      description: Standard deviation of the current training set (proxy for diversity)
+    noise_estimate:
+      type: number
+      description: Estimated fraction of noisy samples remaining in the pool
+    current_performance:
+      type: number
+      description: Current model validation performance (1 / (1 + log_loss))
+    samples_available:
+      type: integer
+      description: Number of samples remaining in the unlabeled pool
+
+action_space:
+  type: object
+  required:
+    - action_type
+    - batch_size
+    - strategy_weights
+  properties:
+    action_type:
+      type: string
+      enum: [select_batch, stop]
+      description: Select a batch of data or stop the episode early
+    batch_size:
+      type: integer
+      minimum: 0
+      description: Number of samples to select this step
+    strategy_weights:
+      type: object
+      description: Weights for each sampling strategy (normalized internally)
+      properties:
+        uncertainty:
+          type: number
+          minimum: 0.0
+        diversity:
+          type: number
+          minimum: 0.0
+        random:
+          type: number
+          minimum: 0.0
+
+tasks:
+  - id: easy
+    difficulty: easy
+    description: >
+      Clean dataset (flip_y=0.05), budget=300, max_steps=15.
+      Agent must reach validation performance > 0.55.
+    success_criteria: "current_performance > 0.55"
+
+  - id: medium
+    difficulty: medium
+    description: >
+      High noise (flip_y=0.25), budget=150, max_steps=12.
+      Agent must reach performance > 0.52 while keeping average
+      noise selection rate below 0.50.
+    success_criteria: "current_performance > 0.52 AND avg_noise_ratio < 0.50"
+
+  - id: hard
+    difficulty: hard
+    description: >
+      High noise (flip_y=0.30), tight budget=100, max_steps=8.
+      Agent must hit performance > 0.58 efficiently.
+      Grader scores performance and budget efficiency jointly.
+    success_criteria: "current_performance > 0.58, scored jointly with efficiency"
+
+reward:
+  type: continuous
+  range: [-inf, +inf]
+  description: >
+    Shaped reward combining performance gain, diversity bonus,
+    redundancy penalty, noise penalty, and budget cost.
+    Provides dense signal throughout the episode — not just at termination.
+
+endpoints:
+  websocket: WS   /ws       # primary transport; required on HF Spaces
+  reset:   POST /reset
+  step:    POST /step
+  state:   GET  /state
+  tasks:   GET  /tasks
+  grader:  POST /grader
+  baseline: GET /baseline
+  health:  GET  /health
