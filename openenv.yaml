@@ -70,8 +70,9 @@ tasks:
     difficulty: easy
     description: >
       Clean dataset (flip_y=0.05), budget=300, max_steps=15.
-      Agent must reach validation performance > 0.55.
-    success_criteria: "current_performance > 0.55"
+      Agent must reach validation performance > 0.62.
+      Score is normalized over range [0.55, 0.75].
+    success_criteria: "current_performance > 0.62"
 
   - id: medium
     difficulty: medium
