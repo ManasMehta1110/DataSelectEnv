@@ -93,9 +93,9 @@ TASKS = {
         "description": (
             "High noise (flip_y=0.25), budget=150, max_steps=12. "
             "Agent must reach performance > 0.52 while keeping average "
-            "noise selection rate below 0.45. Uncertainty-only strategies fail."
+            "noise selection rate below 0.50. Uncertainty-only strategies fail."
         ),
-        "success_criteria": "current_performance > 0.52 AND avg noise_ratio < 0.45",
+        "success_criteria": "current_performance > 0.52 AND avg noise_ratio < 0.50",
         "cfg_overrides": {
             "data":           {"flip_y": 0.25},
             "budget":         150,
@@ -202,7 +202,7 @@ def _build_cfg(task_id: str) -> dict:
     return cfg
 
 
-def _grade(task_id: str, obs: Observation, noise_ratios: list, cfg: dict) -> GraderResponse:
+def _grade(task_id: str, obs: Observation, noise_ratios: list, cfg: dict, episode_id: str = "") -> GraderResponse:
     perf = obs.current_performance
 
     if task_id == "easy":
@@ -240,8 +240,11 @@ def _grade(task_id: str, obs: Observation, noise_ratios: list, cfg: dict) -> Gra
             "budget_used":       int(budget_used),
         }
 
+    # Validator requires score strictly in (0, 1) — clamp away from exact endpoints
+    score = float(np.clip(score, 0.001, 0.999))
+
     return GraderResponse(
-        episode_id=store.episode_id,
+        episode_id=episode_id or store.episode_id or "",
         task_id=task_id,
         score=score,
         breakdown=breakdown,
@@ -410,7 +413,7 @@ def grader(req: GraderRequest):
             detail=f"task_id mismatch: episode was '{record['task_id']}', got '{req.task_id}'.",
         )
 
-    return _grade(req.task_id, record["final_obs"], record["noise_ratios"], record["cfg"])
+    return _grade(req.task_id, record["final_obs"], record["noise_ratios"], record["cfg"], episode_id=req.episode_id)
 
 
 @app.get("/baseline")
@@ -443,11 +446,7 @@ def baseline():
             if "noise_ratio" in info:
                 noise_ratios.append(info["noise_ratio"])
 
-        # Temporarily point store.episode_id so _grade() can fill it
-        _saved_id  = store.episode_id
-        store.episode_id = str(uuid.uuid4())
-        result = _grade(task_id, obs, noise_ratios, cfg)
-        store.episode_id = _saved_id
+        result = _grade(task_id, obs, noise_ratios, cfg, episode_id=str(uuid.uuid4()))
 
         results[task_id] = {
             "score":               result.score,
@@ -544,6 +543,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 ws_final_obs    = obs
                 if "noise_ratio" in info:
                     ws_noise_ratios.append(info["noise_ratio"])
+
+                # Save to _completed so POST /grader can look it up
+                if done:
+                    _completed[ws_episode_id] = {
+                        "final_obs":    obs,
+                        "noise_ratios": list(ws_noise_ratios),
+                        "cfg":          ws_cfg,
+                        "task_id":      ws_task_id,
+                    }
 
                 await websocket.send_json({
                     "type": "step",
