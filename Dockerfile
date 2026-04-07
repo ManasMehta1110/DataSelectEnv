@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11.9-slim-bookworm
 
 # HF Spaces runs as a non-root user — create it early
 RUN useradd -m -u 1000 appuser
